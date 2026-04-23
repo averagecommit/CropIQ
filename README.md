@@ -191,72 +191,8 @@ Expected response:
 
 ---
 
-## ⚠️ Troubleshooting
-
-### Issue 1: "Cannot connect to ML model server"
-
-**Cause:** Flask server is not running
-
-**Solution:**
-```bash
-# Make sure Flask is running in a terminal
-python app.py
-
-# Check if it's listening on port 5000
-# On Windows: netstat -an | findstr 5000
-# On Linux/Mac: lsof -i :5000
-```
-
-### Issue 2: "ModuleNotFoundError: No module named 'flask'"
-
-**Cause:** Flask not installed
-
-**Solution:**
-```bash
-pip install flask flask-cors
-```
-
-### Issue 3: "FileNotFoundError: best_model.pkl"
-
-**Cause:** Model hasn't been trained yet
-
-**Solution:**
-```bash
-# Train the model first
-python main_improved.py
-
-# This creates the .pkl files needed by Flask
-```
-
-### Issue 4: CORS errors in browser console
-
-**Cause:** Browser security blocking cross-origin requests
-
-**Solution:**
-- Make sure `flask-cors` is installed: `pip install flask-cors`
-- Access the calculator via Flask URL (http://127.0.0.1:5000) not file:// URL
-
-### Issue 5: Predictions look wrong
-
-**Cause:** Using old hardcoded computeYield function
-
-**Solution:**
-- Make sure you're using `crop_yield_app_backend.html` (the version with Flask API calls)
-- Check browser console for any JavaScript errors
-- Verify the Flask server logs show incoming POST requests
-
 ---
 
-## 🎯 Key Differences: Hardcoded vs ML Model
-
-| Feature | Hardcoded (Original) | ML Backend (New) |
-|---------|---------------------|------------------|
-| Prediction logic | Simple formula with constants | Trained Gradient Boosting model |
-| Accuracy | Approximate (~70% correlation) | High accuracy (R² = 0.98) |
-| Features used | Limited heuristics | All 6 numeric + 3 categorical features |
-| Training required | No | Yes (one-time) |
-| Real-time | Yes (instant) | Yes (~50ms per prediction) |
-| Offline capable | Yes | No (needs Flask server) |
 
 ---
 
@@ -303,23 +239,6 @@ python main_improved.py
 
 ---
 
-## 🚢 Next Steps: Deployment
-
-For production deployment, consider:
-
-1. **Use Gunicorn** instead of Flask dev server:
-   ```bash
-   pip install gunicorn
-   gunicorn -w 4 -b 0.0.0.0:5000 app:app
-   ```
-
-2. **Add HTTPS** with nginx reverse proxy
-
-3. **Use environment variables** for configuration
-
-4. **Add request validation** and rate limiting
-
-5. **Deploy to cloud** (Heroku, AWS, Google Cloud)
 
 ---
 
