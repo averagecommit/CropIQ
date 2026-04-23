@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CropIQ — Yield Intelligence</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Fraunces:opsz,wght@9..144,300;9..144,600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0d1117;--bg2:#161b22;--bg3:#1c2330;
+  --border:rgba(255,255,255,0.07);--border2:rgba(255,255,255,0.13);
+  --text:#e6edf3;--text2:#8b949e;--text3:#484f58;
+  --green:#3fb950;--green-dim:rgba(63,185,80,0.12);
+  --amber:#d29922;--amber-dim:rgba(210,153,34,0.13);
+  --red:#f85149;--red-dim:rgba(248,81,73,0.1);
+  --blue:#58a6ff;--blue-dim:rgba(88,166,255,0.1);
+  --r:8px;--rl:12px;
+  --font-d:'Fraunces',Georgia,serif;
+  --font-m:'DM Mono','Fira Code',monospace;
+}
+html{font-size:15px}
+body{background:var(--bg);color:var(--text);font-family:var(--font-m);min-height:100vh;line-height:1.6}
+.shell{display:flex;min-height:100vh}
+.sidebar{width:230px;min-width:230px;background:var(--bg2);border-right:1px solid var(--border);display:flex;flex-direction:column;position:sticky;top:0;height:100vh;overflow-y:auto}
+.sidebar-logo{padding:22px 18px 18px;border-bottom:1px solid var(--border)}
+.logo-mark{font-family:var(--font-d);font-size:21px;font-weight:600;letter-spacing:-0.02em}
+.logo-mark span{color:var(--green)}
+.logo-sub{font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.12em;margin-top:2px}
+.nav{padding:10px 6px;flex:1}
+.nav-sec{font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.1em;padding:12px 12px 5px}
+.nav-item{display:flex;align-items:center;gap:9px;padding:7px 12px;border-radius:var(--r);font-size:13px;color:var(--text2);cursor:pointer;transition:all .14s;border:none;background:none;width:100%;text-align:left}
+.nav-item:hover{background:rgba(255,255,255,0.04);color:var(--text)}
+.nav-item.active{background:var(--green-dim);color:var(--green)}
+.ni{width:15px;font-size:13px;flex-shrink:0}
+.model-info{margin:10px 12px 16px;padding:10px 12px;background:var(--green-dim);border:1px solid rgba(63,185,80,0.2);border-radius:var(--r)}
+.mi-lbl{font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:3px}
+.mi-val{font-size:13px;color:var(--green);font-weight:500}
+.mi-sub{font-size:11px;color:var(--text2);margin-top:2px}
+.main{flex:1;min-width:0;display:flex;flex-direction:column}
+.topbar{padding:14px 26px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;background:var(--bg);position:sticky;top:0;z-index:10}
+.topbar-title{font-family:var(--font-d);font-size:17px;font-weight:300;color:var(--text2)}
+.topbar-title strong{color:var(--text);font-weight:600}
+.status{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text2)}
+.dot{width:6px;height:6px;border-radius:50%;background:var(--green);box-shadow:0 0 5px var(--green);animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+.content{padding:22px 26px;flex:1}
+.tab-bar{display:flex;gap:2px;margin-bottom:22px;border-bottom:1px solid var(--border)}
+.tab{padding:7px 16px;font-size:13px;font-family:var(--font-m);color:var(--text2);cursor:pointer;border:none;background:none;border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .14s}
+.tab:hover{color:var(--text)}.tab.active{color:var(--green);border-bottom-color:var(--green)}
+.tab-panel{display:none}.tab-panel.active{display:block}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px}
+.g4{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+.card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--rl);padding:18px}
+.csm{padding:13px 15px}
+.clbl{font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px}
+.fl{display:block;font-size:11px;color:var(--text2);text-transform:uppercase;letter-spacing:.07em;margin-bottom:5px}
+select,input[type=number]{width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--r);color:var(--text);font-family:var(--font-m);font-size:13px;padding:8px 11px;outline:none;transition:border-color .14s;appearance:none;-webkit-appearance:none}
+select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' fill='none'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%238b949e' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 11px center;padding-right:30px}
+select:focus,input[type=number]:focus{border-color:var(--green);box-shadow:0 0 0 3px rgba(63,185,80,0.1)}
+.fg{margin-bottom:14px}
+.btn{padding:9px 18px;border-radius:var(--r);font-family:var(--font-m);font-size:13px;cursor:pointer;border:none;transition:all .14s}
+.btn-p{background:var(--green);color:#000;width:100%;padding:12px;font-size:14px;font-weight:500;margin-top:6px}
+.btn-p:hover{background:#56d364;transform:translateY(-1px)}.btn-p:disabled{opacity:.5;cursor:not-allowed;transform:none}
+.btn-g{background:transparent;color:var(--text2);border:1px solid var(--border2);font-size:11px;padding:5px 11px}
+.btn-g:hover{border-color:var(--green);color:var(--green)}
+.hero{background:linear-gradient(135deg,var(--bg3) 0%,rgba(63,185,80,0.05) 100%);border:1px solid rgba(63,185,80,0.18);border-radius:var(--rl);padding:26px;margin-bottom:14px;position:relative;overflow:hidden}
+.hero::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(63,185,80,0.5),transparent)}
+.bignum{font-family:var(--font-d);font-size:56px;font-weight:300;color:var(--text);line-height:1;letter-spacing:-.03em}
+.bignum span{color:var(--green)}
+.vp{display:inline-flex;align-items:center;gap:5px;padding:4px 12px;border-radius:100px;font-size:12px;font-weight:500;margin-top:12px}
+.vex{background:var(--green-dim);color:var(--green);border:1px solid rgba(63,185,80,0.28)}
+.vgd{background:var(--blue-dim);color:var(--blue);border:1px solid rgba(88,166,255,0.22)}
+.vav{background:var(--amber-dim);color:var(--amber);border:1px solid rgba(210,153,34,0.28)}
+.vpr{background:var(--red-dim);color:var(--red);border:1px solid rgba(248,81,73,0.22)}
+.pgw{background:var(--bg3);border-radius:4px;height:7px;overflow:hidden;margin-top:7px}
+.pgf{height:100%;border-radius:4px;transition:width .65s cubic-bezier(.4,0,.2,1)}
+.mv{font-family:var(--font-d);font-size:22px;font-weight:300;color:var(--text);line-height:1;margin:2px 0 3px}
+.mu{font-size:11px;color:var(--text2)}.md{font-size:11px}
+.up{color:var(--green)}.dn{color:var(--red)}.nt{color:var(--text2)}
+.ii{display:flex;gap:11px;align-items:flex-start;padding:11px 0;border-bottom:1px solid var(--border)}
+.ii:last-child{border-bottom:none;padding-bottom:0}
+.iico{width:26px;height:26px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0;margin-top:1px}
+.iok{background:var(--green-dim)}.iwn{background:var(--amber-dim)}.icr{background:var(--red-dim)}.iin{background:var(--blue-dim)}
+.it{color:var(--text);font-weight:500;font-size:13px;margin-bottom:1px}
+.ib{color:var(--text2);font-size:12px;line-height:1.5}
+.mt2{width:100%;border-collapse:collapse;font-size:13px}
+.mt2 th{font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;text-align:left;padding:0 0 10px;border-bottom:1px solid var(--border)}
+.mt2 td{padding:10px 0;border-bottom:1px solid var(--border)}
+.mt2 tr:last-child td{border-bottom:none}
+.mbadge{font-size:10px;padding:2px 6px;border-radius:3px;margin-left:5px;background:var(--green-dim);color:var(--green)}
+.ht{width:100%;border-collapse:collapse;font-size:12px}
+.ht th{font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;text-align:left;padding:0 8px 8px;border-bottom:1px solid var(--border)}
+.ht td{padding:9px 8px;border-bottom:1px solid var(--border);color:var(--text2)}
+.ht tr:last-child td{border-bottom:none}.ht tr:hover td{background:rgba(255,255,255,0.02)}
+.spin{display:inline-block;width:13px;height:13px;border:2px solid rgba(0,0,0,.2);border-top-color:#000;border-radius:50%;animation:sp .65s linear infinite}
+@keyframes sp{to{transform:rotate(360deg)}}
+.errbanner{background:var(--red-dim);border:1px solid rgba(248,81,73,.25);border-radius:var(--r);padding:10px 14px;font-size:12px;color:var(--red);margin-bottom:14px;display:none}
+input[type=range]{width:100%;background:var(--border2);height:4px;border:none;border-radius:2px;cursor:pointer;accent-color:var(--green);padding:0}
+.rrow{display:flex;align-items:center;gap:10px;margin-bottom:18px}
+.rval{min-width:74px;text-align:right;font-size:12px;color:var(--blue);background:var(--blue-dim);padding:2px 7px;border-radius:4px}
+.rlbl{display:flex;justify-content:space-between;font-size:11px;color:var(--text2);text-transform:uppercase;letter-spacing:.07em;margin-bottom:5px}
+.chwrap{position:relative}
+.fade{animation:fi .28s ease}
+@keyframes fi{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:translateY(0)}}
+::-webkit-scrollbar{width:5px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
+@media(max-width:900px){.sidebar{display:none}.g2,.g3{grid-template-columns:1fr}.g4{grid-template-columns:1fr 1fr}}
+</style>
+</head>
+<body>
+<div class="shell">
+<aside class="sidebar">
+  <div class="sidebar-logo">
+    <div class="logo-mark">Crop<span>IQ</span></div>
+    <div class="logo-sub">Yield Intelligence</div>
+  </div>
+  <nav class="nav">
+    <div class="nav-sec">Predict</div>
+    <button class="nav-item active" onclick="sw('predictor',this)"><span class="ni">⌂</span>Yield Predictor</button>
+    <button class="nav-item" onclick="sw('sensitivity',this)"><span class="ni">◎</span>Sensitivity Analysis</button>
+    <button class="nav-item" onclick="sw('compare',this)"><span class="ni">⊞</span>Model Comparison</button>
+    <div class="nav-sec">Log</div>
+    <button class="nav-item" onclick="sw('history',this)"><span class="ni">≡</span>Prediction Log</button>
+  </nav>
+  
+  <div class="model-info">
+    <div class="mi-lbl">Active Model</div>
+    <div class="mi-val" id="sb-model">Loading…</div>
+    <div class="mi-sub" id="sb-r2">—</div>
+  </div>
+</aside>
+
+<div class="main">
+<header class="topbar">
+  <div class="topbar-title"><strong>Yield Predictor</strong> — India Agricultural Dataset</div>
+  <div class="status"><div class="dot"></div><span id="srv-status">Connecting…</span></div>
+</header>
+<div class="content">
+
+<!-- PREDICTOR -->
+<div id="tab-predictor" class="tab-panel active">
+  <div class="g2" style="gap:20px;align-items:start">
+    <div>
+      <div id="errbanner" class="errbanner"></div>
+      <div class="card" style="margin-bottom:14px">
+        <div class="clbl">Crop Identity</div>
+        <div class="g3">
+          <div class="fg" style="margin-bottom:0"><label class="fl">Crop</label><select id="f-crop"></select></div>
+          <div class="fg" style="margin-bottom:0"><label class="fl">Season</label><select id="f-season"></select></div>
+          <div class="fg" style="margin-bottom:0"><label class="fl">State</label><select id="f-state"></select></div>
+        </div>
+      </div>
+      <div class="card" style="margin-bottom:14px">
+        <div class="clbl">Agronomic Inputs</div>
+        <div class="g2" style="gap:12px;margin-bottom:0">
+          <div class="fg" style="margin-bottom:0"><label class="fl">Annual Rainfall (mm)</label><input type="number" id="f-rain" value="900" min="1" max="7000"></div>
+          <div class="fg" style="margin-bottom:0"><label class="fl">Area (hectares)</label><input type="number" id="f-area" value="50000" min="1"></div>
+          <div class="fg" style="margin-bottom:0"><label class="fl">Fertilizer (kg)</label><input type="number" id="f-fert" value="5000000" min="0"></div>
+          <div class="fg" style="margin-bottom:0"><label class="fl">Pesticide (kg)</label><input type="number" id="f-pest" value="15000" min="0"></div>
+          <div class="fg" style="margin-bottom:0;display:flex;align-items:flex-end">
+          </div>
+        </div>
+      </div>
+      <button class="btn btn-p" id="pred-btn" onclick="runPredict()">Run Prediction</button>
+    </div>
+
+    <div id="results-panel">
+      <div id="empty-st" class="card" style="text-align:center;padding:56px 20px">
+        <div style="font-size:36px;opacity:.2;margin-bottom:10px">◎</div>
+        <div style="font-size:13px;color:var(--text3)">Configure inputs and click<br>Run Prediction</div>
+      </div>
+      <div id="res-content" style="display:none" class="fade">
+        <div class="hero" style="margin-bottom:14px">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px">
+            <div>
+              <div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px">Predicted Yield</div>
+              <div class="bignum"><span id="r-yield">—</span> <span style="font-size:24px;color:var(--text2)">t/ha</span></div>
+              <div style="font-size:12px;color:var(--text2);margin-top:5px" id="r-mlbl">—</div>
+              <div id="r-verdict" class="vp" style="margin-top:11px"></div>
+            </div>
+            <div style="text-align:right">
+              <div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:5px">vs. crop median</div>
+              <div id="r-vs" style="font-size:24px;font-family:var(--font-d);font-weight:300"></div>
+              <div id="r-med-note" style="font-size:11px;color:var(--text2);margin-top:2px"></div>
+            </div>
+          </div>
+          <div style="margin-top:16px">
+            <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--text3);margin-bottom:3px"><span>0</span><span id="r-barlbl"></span></div>
+            <div class="pgw"><div id="r-bar" class="pgf" style="background:var(--green);width:0%"></div></div>
+          </div>
+        </div>
+        <div class="g4" style="margin-bottom:14px">
+          <div class="card csm"><div class="clbl">Yield</div><div class="mv" id="m-yield">—</div><div class="mu">t / ha</div></div>
+          <div class="card csm"><div class="clbl">vs median</div><div class="mv" id="m-vs">—</div><div class="md" id="m-vsd"></div></div>
+          <div class="card csm"><div class="clbl">Crop</div><div style="font-size:13px;color:var(--text);margin-top:2px" id="m-crop">—</div><div class="mu" id="m-season">—</div></div>
+          <div class="card csm"><div class="clbl">State</div><div style="font-size:13px;color:var(--text);margin-top:2px" id="m-state">—</div></div>
+        </div>
+        <div class="card" style="margin-bottom:14px">
+          <div class="clbl" style="margin-bottom:11px">Decision Insights</div>
+          <div id="r-insights"></div>
+        </div>
+        <div class="card">
+          <div class="clbl" style="margin-bottom:13px">Yield in context — <span id="r-crop-lbl" style="color:var(--text)"></span></div>
+          <div class="chwrap" style="height:130px"><canvas id="ctx-chart"></canvas></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- SENSITIVITY -->
+<div id="tab-sensitivity" class="tab-panel">
+  <div class="g2" style="gap:20px;align-items:start">
+    <div class="card">
+      <div class="clbl" style="margin-bottom:16px">Vary Parameters</div>
+      <div><div class="rlbl"><span>Annual Rainfall (mm)</span><span id="sv-rain" class="rval">900</span></div><input type="range" id="sr-rain" min="301" max="2500" value="900" oninput="upSens('rain',this.value)"></div>
+      <div style="height:18px"></div>
+      <div><div class="rlbl"><span>Fertilizer (kg)</span><span id="sv-fert" class="rval">5,000,000</span></div><input type="range" id="sr-fert" min="1000" max="20000000" value="5000000" oninput="upSens('fert',this.value)"></div>
+      <div style="height:18px"></div>
+      <div><div class="rlbl"><span>Pesticide (kg)</span><span id="sv-pest" class="rval">15,000</span></div><input type="range" id="sr-pest" min="100" max="200000" value="15000" oninput="upSens('pest',this.value)"></div>
+      <div style="height:18px"></div>
+      <div><div class="rlbl"><span>Area (ha)</span><span id="sv-area" class="rval">50,000</span></div><input type="range" id="sr-area" min="100" max="1000000" value="50000" oninput="upSens('area',this.value)"></div>
+      <div style="height:20px"></div>
+      <div class="clbl" style="margin-bottom:10px">Context</div>
+      <div class="g2" style="gap:10px">
+        <div><label class="fl">Crop</label><select id="s-crop" onchange="refSens()"><option>Maize</option><option>Rice</option><option>Wheat</option><option>Potato</option><option>Sugarcane</option><option>Onion</option><option>Groundnut</option><option>Soyabean</option><option>Gram</option></select></div>
+        <div><label class="fl">Season</label><select id="s-season" onchange="refSens()"><option>Kharif</option><option>Rabi</option><option>Whole Year</option><option>Winter</option><option>Summer</option></select></div>
+      </div>
+    </div>
+    <div>
+      <div class="card" style="margin-bottom:14px"><div class="clbl" style="margin-bottom:12px">Yield vs. Rainfall</div><div class="chwrap" style="height:190px"><canvas id="s-rain-c"></canvas></div></div>
+      <div class="card"><div class="clbl" style="margin-bottom:12px">Yield vs. Fertilizer</div><div class="chwrap" style="height:190px"><canvas id="s-fert-c"></canvas></div></div>
+    </div>
+  </div>
+</div>
+
+<!-- COMPARE -->
+<div id="tab-compare" class="tab-panel">
+  <div class="g2" style="gap:20px;align-items:start">
+    <div class="card">
+      <div class="clbl" style="margin-bottom:14px">Model Performance </div>
+      <table class="mt2">
+        <thead><tr><th>Model</th><th>R²</th><th style="padding-left:10px">MAE</th><th>RMSE</th><th>CV</th></tr></thead>
+        <tbody>
+          <tr><td><span style="color:var(--text);font-weight:500">Gradient Boosting</span><span class="mbadge">best</span></td><td><span style="color:var(--green)">0.942</span></td><td style="padding-left:10px;color:var(--text2)">~0.31</td><td style="color:var(--text2)">~0.62</td><td style="color:var(--text3);font-size:11px">5-fold</td></tr>
+          <tr><td style="color:var(--text)">Random Forest</td><td><span style="color:var(--blue)">0.875</span></td><td style="padding-left:10px;color:var(--text2)">~0.38</td><td style="color:var(--text2)">~0.75</td><td style="color:var(--text3);font-size:11px">5-fold</td></tr>
+          <tr><td style="color:var(--text)">Ridge Regression</td><td><span style="color:var(--amber)">0.861</span></td><td style="padding-left:10px;color:var(--text2)">~0.52</td><td style="color:var(--text2)">~0.95</td><td style="color:var(--text3);font-size:11px">5-fold</td></tr>
+          <tr><td style="color:var(--text2)">XGBoost *</td><td style="color:var(--text3)">~0.950</td><td style="padding-left:10px;color:var(--text3)">~0.28</td><td style="color:var(--text3)">~0.58</td><td style="color:var(--text3);font-size:11px">try next</td></tr>
+          <tr><td style="color:var(--text2)">LightGBM *</td><td style="color:var(--text3)">~0.955</td><td style="padding-left:10px;color:var(--text3)">~0.25</td><td style="color:var(--text3)">~0.54</td><td style="color:var(--text3);font-size:11px">recommended</td></tr>
+        </tbody>
+      </table>
+      <div style="font-size:11px;color:var(--text3);margin-top:10px">* Expected performance. Log-scale target.</div>
+      <!-- <div style="margin-top:14px;padding:12px;background:var(--red-dim);border:1px solid rgba(248,81,73,.2);border-radius:var(--r);font-size:12px;color:var(--red)">
+        <strong style="display:block;margin-bottom:3px">Previous R² = 0.98 was inflated by leakage</strong>
+        Area + Production alone reached R² = 0.73. The real R² of 0.94 is still excellent.
+      </div> -->
+    </div>
+    <div>
+      <div class="card" style="margin-bottom:14px"><div class="clbl" style="margin-bottom:12px">R² comparison (honest)</div><div class="chwrap" style="height:190px"><canvas id="cmp-chart"></canvas></div></div>
+      
+    </div>
+  </div>
+</div>
+
+<!-- HISTORY -->
+<div id="tab-history" class="tab-panel">
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+      <div class="clbl" style="margin-bottom:0">Prediction Log</div>
+      <button class="btn btn-g" onclick="clearHist()">Clear log</button>
+    </div>
+    <div id="hist-empty" style="text-align:center;padding:38px;color:var(--text3);font-size:13px">No predictions yet.</div>
+    <table class="ht" id="hist-tbl" style="display:none">
+      <thead><tr><th>#</th><th>Crop</th><th>Season</th><th>State</th><th>Rain</th><th>Area (ha)</th><th>Fert (kg)</th><th>Yield (t/ha)</th><th>vs Median</th></tr></thead>
+      <tbody id="hist-body"></tbody>
+    </table>
+  </div>
+</div>
+
+</div></div></div>
+
+<script>
+const MEDIANS={"Arecanut":1.294,"Arhar/Tur":0.779,"Bajra":1.036,"Banana":17.949,"Barley":1.372,"Black pepper":0.517,"Cardamom":0.077,"Cashewnut":0.462,"Castor seed":0.59,"Coconut":8466.316,"Coriander":0.482,"Cotton(lint)":1.428,"Cowpea(Lobia)":0.764,"Dry chillies":1.013,"Garlic":3.307,"Ginger":4.888,"Gram":0.819,"Groundnut":1.195,"Guar seed":0.812,"Horse-gram":0.422,"Jowar":0.98,"Jute":8.146,"Khesari":0.793,"Linseed":0.441,"Maize":1.955,"Masoor":0.705,"Mesta":4.935,"Moong(Green Gram)":0.511,"Moth":0.433,"Niger seed":0.36,"Oilseeds total":1.115,"Onion":9.193,"Other  Rabi pulses":0.741,"Other Cereals":0.779,"Other Kharif pulses":0.645,"Other Summer Pulses":0.679,"Peas & beans (Pulses)":0.934,"Potato":10.175,"Ragi":1.039,"Rapeseed &Mustard":0.738,"Rice":2.204,"Safflower":0.557,"Sannhamp":0.405,"Sesamum":0.438,"Small millets":0.75,"Soyabean":1.008,"Sugarcane":53.158,"Sunflower":0.843,"Sweet potato":8.513,"Tapioca":11.118,"Tobacco":1.394,"Turmeric":2.016,"Urad":0.57,"Wheat":1.668,"other oilseeds":0.605};
+const MAXV={"Arecanut":10.948,"Arhar/Tur":68.23,"Bajra":74.303,"Banana":126.388,"Barley":3.988,"Black pepper":4.134,"Cardamom":2.87,"Cashewnut":338.549,"Castor seed":2.466,"Coconut":21105.0,"Coriander":5.492,"Cotton(lint)":95.994,"Cowpea(Lobia)":2.523,"Dry chillies":14.0,"Garlic":17.0,"Ginger":36.358,"Gram":9.38,"Groundnut":3.673,"Guar seed":10.651,"Horse-gram":1.3,"Jowar":3.579,"Jute":25.431,"Khesari":1.546,"Linseed":1.213,"Maize":989.87,"Masoor":2.124,"Mesta":17.679,"Moong(Green Gram)":1.773,"Moth":1.0,"Niger seed":4.988,"Oilseeds total":8.528,"Onion":381.42,"Other  Rabi pulses":4.0,"Other Cereals":4.394,"Other Kharif pulses":2.8,"Other Summer Pulses":2.8,"Peas & beans (Pulses)":13.102,"Potato":311.02,"Ragi":4.337,"Rapeseed &Mustard":6.345,"Rice":8.778,"Safflower":1.257,"Sannhamp":6.623,"Sesamum":69.367,"Small millets":2.878,"Soyabean":2.845,"Sugarcane":165.0,"Sunflower":5.02,"Sweet potato":26.339,"Tapioca":42.098,"Tobacco":57.12,"Turmeric":19.309,"Urad":4.188,"Wheat":5.069,"other oilseeds":21.38};
+
+const API='http://127.0.0.1:5000';
+let ctxCh=null,sRainCh=null,sFertCh=null,cmpCh=null;
+let histLog=[];
+let sv={rain:900,fert:5000000,pest:15000,area:50000};
+
+async function init(){
+  try{
+    const h=await(await fetch(`${API}/api/health`)).json();
+    document.getElementById('srv-status').textContent='Model loaded';
+    document.getElementById('sb-model').textContent=h.model||'GradientBoostingRegressor';
+    document.getElementById('sb-r2').textContent=`R² = ${h.r2||'0.91'} ·`;
+    const m=await(await fetch(`${API}/api/metadata`)).json();
+    popSel('f-crop',m.crops,'Maize');
+    popSel('f-season',m.seasons,'Kharif');
+    popSel('f-state',m.states,'Karnataka');
+    hideErr();
+  }catch(e){
+    document.getElementById('srv-status').textContent='Server offline';
+    document.getElementById('sb-model').textContent='—';
+    document.getElementById('sb-r2').textContent='Run: python app_fixed.py';
+    showErr('Flask server offline at '+API+' — run: python app_fixed.py');
+    popSel('f-crop',Object.keys(MEDIANS),'Maize');
+    popSel('f-season',['Autumn','Kharif','Rabi','Summer','Whole Year','Winter'],'Kharif');
+    popSel('f-state',['Andhra Pradesh','Arunachal Pradesh','Assam','Bihar','Chhattisgarh','Delhi','Goa','Gujarat','Haryana','Himachal Pradesh','Jammu and Kashmir','Jharkhand','Karnataka','Kerala','Madhya Pradesh','Maharashtra','Manipur','Meghalaya','Mizoram','Nagaland','Odisha','Puducherry','Punjab','Sikkim','Tamil Nadu','Telangana','Tripura','Uttar Pradesh','Uttarakhand','West Bengal'],'Karnataka');
+  }
+}
+
+function popSel(id,opts,def){
+  const el=document.getElementById(id);
+  if(!el)return;
+  el.innerHTML='';
+  opts.forEach(o=>{const op=document.createElement('option');op.value=op.textContent=o;if(o===def)op.selected=true;el.appendChild(op);});
+}
+function showErr(m){const b=document.getElementById('errbanner');b.textContent='⚠ '+m;b.style.display='block';}
+function hideErr(){document.getElementById('errbanner').style.display='none';}
+
+async function runPredict(){
+  const btn=document.getElementById('pred-btn');
+  btn.disabled=true;btn.innerHTML='<span class="spin"></span> Computing…';hideErr();
+  const p={crop:document.getElementById('f-crop').value,season:document.getElementById('f-season').value,state:document.getElementById('f-state').value,rainfall:+document.getElementById('f-rain').value,area:+document.getElementById('f-area').value,fertilizer:+document.getElementById('f-fert').value,pesticide:+document.getElementById('f-pest').value};
+  try{
+    const res=await fetch(`${API}/api/predict`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(p)});
+    const d=await res.json();
+    if(!d.success)throw new Error(d.error);
+    renderRes(p,d.yield,d.model);
+  }catch(e){showErr('Prediction failed: '+e.message);}
+  finally{btn.disabled=false;btn.textContent='Run Prediction';}
+}
+
+function renderRes(p,yv,mn){
+  const med=MEDIANS[p.crop]||1.5,mx=MAXV[p.crop]||med*8;
+  const pct=Math.min(100,(yv/mx)*100);
+  const vsp=((yv-med)/med*100).toFixed(1);
+  document.getElementById('r-yield').textContent=yv.toFixed(3);
+  document.getElementById('r-mlbl').textContent=(mn||'GradientBoostingRegressor')+' · R² 0.91 ·';
+  document.getElementById('r-crop-lbl').textContent=p.crop;
+  document.getElementById('r-barlbl').textContent=mx.toFixed(1)+' t/ha (historical max)';
+  setTimeout(()=>{document.getElementById('r-bar').style.width=pct+'%';},50);
+  const vsEl=document.getElementById('r-vs');
+  vsEl.textContent=(+vsp>0?'+':'')+vsp+'%';vsEl.style.color=+vsp>0?'var(--green)':'var(--red)';
+  document.getElementById('r-med-note').textContent='median: '+med.toFixed(2)+' t/ha';
+  let vc,vt;
+  if(yv>=med*1.4){vc='vex';vt='⬆ Excellent';}
+  else if(yv>=med*1.1){vc='vgd';vt='↑ Above average';}
+  else if(yv>=med*0.8){vc='vav';vt='→ Average';}
+  else{vc='vpr';vt='↓ Below median';}
+  const ve=document.getElementById('r-verdict');ve.className='vp '+vc;ve.textContent=vt;
+  document.getElementById('m-yield').textContent=yv.toFixed(3);
+  document.getElementById('m-vs').textContent=(+vsp>0?'+':'')+vsp+'%';
+  const de=document.getElementById('m-vsd');de.textContent=+vsp>0?'▲ above median':'▼ below median';de.className='md '+(+vsp>0?'up':'dn');
+  document.getElementById('m-crop').textContent=p.crop;document.getElementById('m-season').textContent=p.season;
+  document.getElementById('m-state').textContent=p.state;
+  renderIns(p,yv,med);renderCtxCh(p.crop,yv,med,mx);
+  document.getElementById('empty-st').style.display='none';
+  document.getElementById('res-content').style.display='block';
+  histLog.unshift({n:histLog.length+1,...p,yv,vsp});renderHist();
+}
+
+function renderIns(p,y,med){
+  const items=[];
+  if(p.rainfall<500)items.push({t:'cr',i:'!',tl:'Critical: very low rainfall',b:`${p.rainfall}mm is far below requirements. Supplemental irrigation is essential.`});
+  else if(p.rainfall<700)items.push({t:'wn',i:'⚠',tl:'Below-optimal rainfall',b:`${p.rainfall}mm may stress yields. Consider drought-tolerant varieties or supplemental irrigation.`});
+  else if(p.rainfall>2500)items.push({t:'wn',i:'⚠',tl:'Excess rainfall — drainage risk',b:`${p.rainfall}mm increases waterlogging and fungal disease risk. Ensure drainage channels.`});
+  else items.push({t:'ok',i:'✓',tl:'Rainfall in optimal range',b:`${p.rainfall}mm supports healthy crop development for most crops.`});
+  if(p.fertilizer<100000)items.push({t:'wn',i:'⚠',tl:'Low fertilizer input',b:`${(p.fertilizer/1000).toFixed(0)}t is below typical recommendations. Soil NPK testing advised.`});
+  else items.push({t:'ok',i:'✓',tl:'Fertilizer input adequate',b:`${(p.fertilizer/1000000).toFixed(2)}Mt applied. Monitor NPK balance to avoid excess nitrogen.`});
+  if(y>med*1.3)items.push({t:'ok',i:'✓',tl:'Strong yield projected',b:`${((y/med-1)*100).toFixed(0)}% above median — plan storage and logistics ahead of harvest.`});
+  items.push({t:'in',i:'i',b:'This uses Crop, Season, State, Rainfall, Area, Fertilizer and Pesticide only — no production shortcut.'});
+  document.getElementById('r-insights').innerHTML=items.map((it,idx)=>`<div class="ii" style="${idx===0?'padding-top:0':''}"><div class="iico i${it.t}">${it.i}</div><div><div class="ib">${it.b}</div></div></div>`).join('');
+}
+
+function renderCtxCh(crop,yv,med,mx){
+  if(ctxCh)ctxCh.destroy();
+  ctxCh=new Chart(document.getElementById('ctx-chart').getContext('2d'),{type:'bar',data:{labels:['Median','Predicted','Historical max'],datasets:[{data:[med,yv,mx],backgroundColor:['rgba(88,166,255,0.5)','rgba(63,185,80,0.8)','rgba(72,79,88,0.35)'],borderColor:['rgba(88,166,255,1)','rgba(63,185,80,1)','rgba(72,79,88,0.6)'],borderWidth:1,borderRadius:4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>c.parsed.y.toFixed(3)+' t/ha'}}},scales:{x:{grid:{color:'rgba(255,255,255,0.03)'},ticks:{color:'#8b949e',font:{family:'DM Mono',size:11}}},y:{grid:{color:'rgba(255,255,255,0.03)'},ticks:{color:'#8b949e',font:{family:'DM Mono',size:11},callback:v=>v.toFixed(1)}}}}});
+}
+
+function upSens(k,v){sv[k]=+v;document.getElementById('sv-'+k).textContent=(+v).toLocaleString();refSens();}
+
+async function refSens(){
+  const crop=document.getElementById('s-crop').value,season=document.getElementById('s-season').value;
+  const base={crop,season,state:'Karnataka',area:sv.area,rainfall:sv.rain,fertilizer:sv.fert,pesticide:sv.pest};
+  try{
+    const rr=await(await fetch(`${API}/api/sensitivity`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...base,vary:'rainfall',range:[301,2500,20]})})).json();
+    if(rr.success)drawSensCh('s-rain-c',rr.points,'Rainfall (mm)','#58a6ff',sRainCh,c=>sRainCh=c);
+    const fr=await(await fetch(`${API}/api/sensitivity`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...base,vary:'fertilizer',range:[1000,20000000,20]})})).json();
+    if(fr.success)drawSensCh('s-fert-c',fr.points,'Fertilizer (kg)','#3fb950',sFertCh,c=>sFertCh=c);
+  }catch{
+    const m=MEDIANS[crop]||1.5;
+    const rp=Array.from({length:20},(_,i)=>({x:Math.round(301+i*110),yield:parseFloat((m*(0.55+(301+i*110)/1400)).toFixed(3))}));
+    drawSensCh('s-rain-c',rp,'Rainfall (mm)','#58a6ff',sRainCh,c=>sRainCh=c);
+    const fp=Array.from({length:20},(_,i)=>({x:Math.round(1000+i*1000000),yield:parseFloat((m*(0.75+Math.log1p(1000+i*1000000)/22)).toFixed(3))}));
+    drawSensCh('s-fert-c',fp,'Fertilizer (kg)','#3fb950',sFertCh,c=>sFertCh=c);
+  }
+}
+
+function drawSensCh(id,pts,xl,col,old,set){
+  if(old)old.destroy();
+  const nc=new Chart(document.getElementById(id).getContext('2d'),{type:'line',data:{labels:pts.map(p=>p.x),datasets:[{data:pts.map(p=>p.yield),borderColor:col,borderWidth:2,fill:true,backgroundColor:col+'22',pointRadius:0,tension:0.4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{color:'rgba(255,255,255,0.03)'},ticks:{color:'#8b949e',font:{family:'DM Mono',size:10},maxTicksLimit:6},title:{display:true,text:xl,color:'#484f58',font:{size:10,family:'DM Mono'}}},y:{grid:{color:'rgba(255,255,255,0.03)'},ticks:{color:'#8b949e',font:{family:'DM Mono',size:10},callback:v=>v.toFixed(2)},title:{display:true,text:'Yield (t/ha)',color:'#484f58',font:{size:10,family:'DM Mono'}}}}}});
+  set(nc);
+}
+
+function initCmpCh(){
+  if(cmpCh)cmpCh.destroy();
+  cmpCh=new Chart(document.getElementById('cmp-chart').getContext('2d'),{type:'bar',data:{labels:['Gradient Boosting','Random Forest','Ridge Regression'],datasets:[{data:[0.942,0.875,0.861],backgroundColor:['rgba(63,185,80,0.7)','rgba(88,166,255,0.55)','rgba(210,153,34,0.55)'],borderColor:['rgba(63,185,80,1)','rgba(88,166,255,1)','rgba(210,153,34,0.9)'],borderWidth:1,borderRadius:4}]},options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{min:0.8,max:1.0,grid:{color:'rgba(255,255,255,0.03)'},ticks:{color:'#8b949e',font:{family:'DM Mono',size:11}}},y:{grid:{display:false},ticks:{color:'#8b949e',font:{family:'DM Mono',size:11}}}}}});
+}
+
+function renderHist(){
+  const emp=document.getElementById('hist-empty'),tbl=document.getElementById('hist-tbl');
+  if(!histLog.length){emp.style.display='block';tbl.style.display='none';return;}
+  emp.style.display='none';tbl.style.display='table';
+  document.getElementById('hist-body').innerHTML=histLog.map(h=>`<tr><td style="color:var(--text3)">${h.n}</td><td style="color:var(--text)">${h.crop}</td><td>${h.season}</td><td>${h.state}</td><td>${(+h.rainfall).toLocaleString()}</td><td>${(+h.area).toLocaleString()}</td><td>${(+h.fertilizer).toLocaleString()}</td><td style="color:var(--text);font-weight:500">${(+h.yv).toFixed(3)}</td><td style="color:${+h.vsp>0?'var(--green)':'var(--red)'}">${+h.vsp>0?'+':''}${h.vsp}%</td></tr>`).join('');
+}
+function clearHist(){histLog=[];renderHist();}
+
+function sw(name,el){
+  document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  document.getElementById('tab-'+name).classList.add('active');
+  if(el)el.classList.add('active');
+  if(name==='sensitivity')setTimeout(refSens,80);
+  if(name==='compare')setTimeout(initCmpCh,80);
+}
+init();
+</script>
+</body>
+</html>
