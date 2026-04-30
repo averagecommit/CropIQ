@@ -126,6 +126,7 @@ if XGBOOST_AVAILABLE:
     }
 
 tuned_models = {}
+best_cv_scores = {}
 n_iter = 20          # ← Increase to 30–50 if you want even better results (takes longer)
 
 for name, model in models.items():
@@ -134,6 +135,7 @@ for name, model in models.items():
     
     if not param_grid:
         tuned_models[name] = model
+        best_cv_scores[name] = None
         print("✅ (no tuning needed)")
         continue
 
@@ -150,6 +152,7 @@ for name, model in models.items():
     search.fit(X_train, y_train)
     
     tuned_models[name] = search.best_estimator_
+    best_cv_scores[name] = float(search.best_score_)
     print(f"✅ Best CV R² = {search.best_score_:.4f}")
     # Optional: print best params
     # print(f"   Best params: {search.best_params_}")
@@ -165,6 +168,7 @@ print(f"{'Model':<25} {'MAE':>10} {'RMSE':>10} {'R²':>8}")
 print("-" * 56)
 
 best_r2, best_model_name, best_model_obj = -np.inf, None, None
+performance_rows = []
 
 for name, model in models.items():
     if name == "XGBoost" and XGBOOST_AVAILABLE:
@@ -181,12 +185,28 @@ for name, model in models.items():
     r2   = r2_score(y_test_real, y_pred_real)
 
     print(f"  {name:<25} {mae:>10.3f} {rmse:>10.3f} {r2:>8.4f}")
+    performance_rows.append({
+        "name": name,
+        "r2": round(float(r2), 4),
+        "mae": round(float(mae), 3),
+        "rmse": round(float(rmse), 3),
+        "cv_r2": (
+            round(float(best_cv_scores[name]), 4)
+            if best_cv_scores.get(name) is not None
+            else None
+        ),
+        "is_best": False,
+    })
 
     if r2 > best_r2:
         best_r2, best_model_name, best_model_obj = r2, name, model
     
 print(f"\n✅ Best model (after tuning): {best_model_name} (R² = {best_r2:.4f})")
 print(f"   This R² is honest — no production leakage.")
+
+for row in performance_rows:
+    row["is_best"] = row["name"] == best_model_name
+performance_rows.sort(key=lambda row: row["r2"], reverse=True)
 
 # ---------------------------------------------------------------
 # 9. Save artifacts
@@ -227,46 +247,9 @@ def predict_yield(crop, season, state, crop_year,
 # ===============================================================
 performance_data = {
     "success": True,
-    "models": [
-        {
-            "name": "Random Forest",
-            "r2": 0.9481,
-            "mae": 12.025,
-            "rmse": 208.895,
-            "cv_r2": 0.9537,
-            "is_best": True
-        },
-        {
-            "name": "Gradient Boosting",
-            "r2": 0.9367,
-            "mae": 12.846,
-            "rmse": 230.840,
-            "cv_r2": 0.9530,
-            "is_best": False
-        },
-        {
-            "name": "Ridge Regression",
-            "r2": 0.7335,
-            "mae": 37.154,
-            "rmse": 473.451,
-            "cv_r2": 0.8616,
-            "is_best": False
-        },
-        {
-            "name": "XGBoost",
-            "r2": 0.8458,
-            "mae": 18.977,
-            "rmse": 360.197,
-            "cv_r2": 0.9506,
-            "is_best": False
-        }
-    ]
+    "best_model_name": best_model_name,
+    "models": performance_rows,
 }
 
 joblib.dump(performance_data, "model_performance.pkl")
 print("✅ Saved model_performance.pkl for web dashboard")
-
-ex = predict_yield("Maize", "Kharif", "Karnataka",
-                   area=50000, annual_rainfall=900,
-                   fertilizer=5000000, pesticide=15000)
-print(f"\nExample — Maize/Kharif/Karnataka: {ex:.3f} t/ha")

@@ -243,15 +243,11 @@ input[type=range]{width:100%;background:var(--border2);height:4px;border:none;bo
       <div class="clbl" style="margin-bottom:14px">Model Performance </div>
       <table class="mt2">
         <thead><tr><th>Model</th><th>R²</th><th style="padding-left:10px">MAE</th><th>RMSE</th><th>CV</th></tr></thead>
-        <tbody>
-          <tr><td><span style="color:var(--text);font-weight:500">Gradient Boosting</span><span class="mbadge">best</span></td><td><span style="color:var(--green)">0.942</span></td><td style="padding-left:10px;color:var(--text2)">~0.31</td><td style="color:var(--text2)">~0.62</td><td style="color:var(--text3);font-size:11px">5-fold</td></tr>
-          <tr><td style="color:var(--text)">Random Forest</td><td><span style="color:var(--blue)">0.875</span></td><td style="padding-left:10px;color:var(--text2)">~0.38</td><td style="color:var(--text2)">~0.75</td><td style="color:var(--text3);font-size:11px">5-fold</td></tr>
-          <tr><td style="color:var(--text)">Ridge Regression</td><td><span style="color:var(--amber)">0.861</span></td><td style="padding-left:10px;color:var(--text2)">~0.52</td><td style="color:var(--text2)">~0.95</td><td style="color:var(--text3);font-size:11px">5-fold</td></tr>
-          <tr><td style="color:var(--text2)">XGBoost *</td><td style="color:var(--text3)">~0.950</td><td style="padding-left:10px;color:var(--text3)">~0.28</td><td style="color:var(--text3)">~0.58</td><td style="color:var(--text3);font-size:11px">try next</td></tr>
-          <tr><td style="color:var(--text2)">LightGBM *</td><td style="color:var(--text3)">~0.955</td><td style="padding-left:10px;color:var(--text3)">~0.25</td><td style="color:var(--text3)">~0.54</td><td style="color:var(--text3);font-size:11px">recommended</td></tr>
+        <tbody id="model-perf-body">
+          <tr><td colspan="5" style="color:var(--text3)">Loading model performance...</td></tr>
         </tbody>
       </table>
-      <div style="font-size:11px;color:var(--text3);margin-top:10px">* Expected performance. Log-scale target.</div>
+      <div id="model-perf-note" style="font-size:11px;color:var(--text3);margin-top:10px">Loaded from the latest training artifacts.</div>
       <!-- <div style="margin-top:14px;padding:12px;background:var(--red-dim);border:1px solid rgba(248,81,73,.2);border-radius:var(--r);font-size:12px;color:var(--red)">
         <strong style="display:block;margin-bottom:3px">Previous R² = 0.98 was inflated by leakage</strong>
         Area + Production alone reached R² = 0.73. The real R² of 0.94 is still excellent.
@@ -289,6 +285,14 @@ const API='http://127.0.0.1:5000';
 let ctxCh=null,sRainCh=null,sFertCh=null,cmpCh=null;
 let histLog=[];
 let sv={rain:900,fert:5000000,pest:15000,area:50000};
+let modelPerformance=[];
+const MODEL_COLORS=[
+  ['rgba(63,185,80,0.7)','rgba(63,185,80,1)'],
+  ['rgba(88,166,255,0.55)','rgba(88,166,255,1)'],
+  ['rgba(210,153,34,0.55)','rgba(210,153,34,0.9)'],
+  ['rgba(163,113,247,0.55)','rgba(163,113,247,0.9)'],
+  ['rgba(248,81,73,0.5)','rgba(248,81,73,0.85)']
+];
 
 async function init(){
   try{
@@ -300,6 +304,7 @@ async function init(){
     popSel('f-crop',m.crops,'Maize');
     popSel('f-season',m.seasons,'Kharif');
     popSel('f-state',m.states,'Karnataka');
+    await loadModelPerformance();
     hideErr();
   }catch(e){
     document.getElementById('srv-status').textContent='Server offline';
@@ -309,6 +314,7 @@ async function init(){
     popSel('f-crop',Object.keys(MEDIANS),'Maize');
     popSel('f-season',['Autumn','Kharif','Rabi','Summer','Whole Year','Winter'],'Kharif');
     popSel('f-state',['Andhra Pradesh','Arunachal Pradesh','Assam','Bihar','Chhattisgarh','Delhi','Goa','Gujarat','Haryana','Himachal Pradesh','Jammu and Kashmir','Jharkhand','Karnataka','Kerala','Madhya Pradesh','Maharashtra','Manipur','Meghalaya','Mizoram','Nagaland','Odisha','Puducherry','Punjab','Sikkim','Tamil Nadu','Telangana','Tripura','Uttar Pradesh','Uttarakhand','West Bengal'],'Karnataka');
+    renderModelPerformance([]);
   }
 }
 
@@ -406,9 +412,45 @@ function drawSensCh(id,pts,xl,col,old,set){
   set(nc);
 }
 
+async function loadModelPerformance(){
+  try{
+    const data=await(await fetch(`${API}/api/performance`)).json();
+    renderModelPerformance(data.models||[]);
+    if(data.error)document.getElementById('model-perf-note').textContent=data.error;
+  }catch(e){
+    renderModelPerformance([]);
+    document.getElementById('model-perf-note').textContent='Model performance unavailable. Re-run training to create model_performance.pkl.';
+  }
+}
+
+function fmtMetric(v,d=3){
+  return Number.isFinite(+v)?(+v).toFixed(d):'n/a';
+}
+
+function renderModelPerformance(models){
+  modelPerformance=[...(models||[])]
+    .filter(m=>Number.isFinite(+m.r2))
+    .sort((a,b)=>+b.r2-+a.r2);
+  const body=document.getElementById('model-perf-body');
+  if(!modelPerformance.length){
+    body.innerHTML='<tr><td colspan="5" style="color:var(--text3)">No model performance data found.</td></tr>';
+    if(cmpCh){cmpCh.destroy();cmpCh=null;}
+    return;
+  }
+  body.innerHTML=modelPerformance.map((m,i)=>{
+    const color=m.is_best?'var(--green)':(i===1?'var(--blue)':i===2?'var(--amber)':'var(--text2)');
+    const cv=m.cv_r2==null?'n/a':fmtMetric(m.cv_r2,3);
+    return `<tr><td><span style="color:var(--text);font-weight:${m.is_best?'500':'400'}">${m.name}</span>${m.is_best?'<span class="mbadge">best</span>':''}</td><td><span style="color:${color}">${fmtMetric(m.r2,3)}</span></td><td style="padding-left:10px;color:var(--text2)">${fmtMetric(m.mae,3)}</td><td style="color:var(--text2)">${fmtMetric(m.rmse,3)}</td><td style="color:var(--text3);font-size:11px">${cv}</td></tr>`;
+  }).join('');
+  document.getElementById('model-perf-note').textContent='Sorted by test R² from the latest training run.';
+  initCmpCh();
+}
+
 function initCmpCh(){
   if(cmpCh)cmpCh.destroy();
-  cmpCh=new Chart(document.getElementById('cmp-chart').getContext('2d'),{type:'bar',data:{labels:['Gradient Boosting','Random Forest','Ridge Regression'],datasets:[{data:[0.942,0.875,0.861],backgroundColor:['rgba(63,185,80,0.7)','rgba(88,166,255,0.55)','rgba(210,153,34,0.55)'],borderColor:['rgba(63,185,80,1)','rgba(88,166,255,1)','rgba(210,153,34,0.9)'],borderWidth:1,borderRadius:4}]},options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{min:0.8,max:1.0,grid:{color:'rgba(255,255,255,0.03)'},ticks:{color:'#8b949e',font:{family:'DM Mono',size:11}}},y:{grid:{display:false},ticks:{color:'#8b949e',font:{family:'DM Mono',size:11}}}}}});
+  if(!modelPerformance.length)return;
+  const minR2=Math.max(0,Math.floor((Math.min(...modelPerformance.map(m=>+m.r2))-0.05)*10)/10);
+  cmpCh=new Chart(document.getElementById('cmp-chart').getContext('2d'),{type:'bar',data:{labels:modelPerformance.map(m=>m.name),datasets:[{data:modelPerformance.map(m=>+m.r2),backgroundColor:modelPerformance.map((_,i)=>MODEL_COLORS[i%MODEL_COLORS.length][0]),borderColor:modelPerformance.map((_,i)=>MODEL_COLORS[i%MODEL_COLORS.length][1]),borderWidth:1,borderRadius:4}]},options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{min:minR2,max:1.0,grid:{color:'rgba(255,255,255,0.03)'},ticks:{color:'#8b949e',font:{family:'DM Mono',size:11}}},y:{grid:{display:false},ticks:{color:'#8b949e',font:{family:'DM Mono',size:11}}}}}});
 }
 
 function renderHist(){

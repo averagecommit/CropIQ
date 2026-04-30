@@ -22,6 +22,27 @@ except Exception as e:
     print("  Run main_fixed.py to retrain without production leakage.")
     exit(1)
 
+try:
+    performance_data = joblib.load("model_performance.pkl")
+except Exception as e:
+    performance_data = {
+        "success": False,
+        "models": [],
+        "error": f"Could not load model_performance.pkl: {e}",
+    }
+
+
+def to_json_safe(value):
+    if isinstance(value, dict):
+        return {k: to_json_safe(v) for k, v in value.items()}
+    if isinstance(value, list):
+        return [to_json_safe(v) for v in value]
+    if isinstance(value, np.integer):
+        return int(value)
+    if isinstance(value, np.floating):
+        return float(value)
+    return value
+
 
 def predict_yield(crop, season, state, crop_year,
                   area, annual_rainfall, fertilizer, pesticide):
@@ -53,6 +74,11 @@ def index():
 @app.route("/api/metadata", methods=["GET"])
 def get_metadata():
     return jsonify(meta)
+
+
+@app.route("/api/performance", methods=["GET"])
+def get_performance():
+    return jsonify(to_json_safe(performance_data))
 
 
 @app.route("/api/predict", methods=["POST"])
